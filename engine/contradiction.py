@@ -1,8 +1,9 @@
 import sqlite3
+from typing import Optional
 from db import db
 
 
-def confront(session_id: int, statement_id: int, clue_id: int) -> dict | None:
+def confront(session_id: int, statement_id: int, clue_id: int) -> Optional[dict]:
     """
     Oyuncu bir ifadeyi topladığı bir ipucuyla yüzleştirdiğinde çağrılır.
     Çelişki varsa kayıt eder ve şu sözlüğü döner:
