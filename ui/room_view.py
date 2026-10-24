@@ -20,9 +20,8 @@ def apply_detective_theme(selected_room: str):
     
     room_backgrounds = {
         "Kütüphane": "room_kutuphane.jpg",
-        "Çalışma Odası": "room_calisma.jpg",
-        "Kış Bahçesi": "room_bahce.jpg",
-        "Mahzen": "room_mahzen.jpg"
+        "Çalışma":   "room_calisma.jpg",
+        "Bahçe":     "room_bahce.jpg",
     }
 
     target_image_name = room_backgrounds.get(selected_room, "detective_room_bg.jpg")
@@ -220,71 +219,9 @@ def apply_detective_theme(selected_room: str):
         </style>
     """, unsafe_allow_html=True)
 
-def init_mock_database():
-    """Arkadaşların motoru yazana kadar delilleri saklayacak yerel hafıza."""
-    if "clues_db" not in st.session_state:
-        st.session_state.clues_db = {
-            "Kütüphane": [
-                {
-                    "id": "clue_kut_1",
-                    "name": "Yırtık Zarf Parçası",
-                    "description": "Üzerinde aceleyle karalanmış '23:15 Rıhtım' ibaresi ve silik bir mühür var.",
-                    "details": "ÖZEL BİLGİ: Kağıt kalitesi yüksek ve köşesinde yabancı bir konsolosluğun mührü var. 'Sakın gecikme, her şeyi öğrenmiş' şeklinde panikle yazılmış bir not bulunuyor.",
-                    "suspect_hint": "Lord Henry veya Uşak James bu mührü hemen tanıyacaktır.",
-                    "collected": False
-                },
-                {
-                    "id": "clue_kut_2",
-                    "name": "Pirinç Çekmece Anahtarı",
-                    "description": "Halı püsküllerinin arasına düşmüş, üzerinde 'Kasa-3' yazılı küçük antika anahtar.",
-                    "details": "ÖZEL BİLGİ: Masif pirinçten dökülmüş, kurbanın gizli günlük çekmecesini açıyor olabilir. Üzerinde taze yağ lekeleri var.",
-                    "suspect_hint": "Konağın anahtarları sadece Hizmetçi Mary'de durur.",
-                    "collected": False
-                }
-            ],
-            "Çalışma Odası": [
-                {
-                    "id": "clue_cal_1",
-                    "name": "Devrilmiş Mürekkep Lekesi",
-                    "description": "Hemen yanında bir mücadelenin yaşandığını gösteren tırnak çizikleri var.",
-                    "details": "ÖZEL BİLGİ: Mürekkep tamamen kurumamış. Masa kenarında tırnak izleri ve yere saçılmış boş kağıtlar ani bir tartışmayı kanıtlıyor.",
-                    "suspect_hint": "Katilin ellerinde veya manşetinde mürekkep izi kalmış olmalı.",
-                    "collected": False
-                },
-                {
-                    "id": "clue_cal_2",
-                    "name": "Tehdit Mektubu Karalaması",
-                    "description": "'Hisselerini devretmezsen her şeyi açıklarım' cümlesi güçlükle okunuyor.",
-                    "details": "ÖZEL BİLGİ: Şöminede yakılmak istenmiş ama kurtarılmış. Sol alt köşesinde zarifçe karalanmış 'M' harfi göze çarpıyor.",
-                    "suspect_hint": "Bu yazı tipini Bayan Margaret'a gösterip tepkisini ölçmelisiniz.",
-                    "collected": False
-                }
-            ],
-            "Kış Bahçesi": [
-                {
-                    "id": "clue_kis_1",
-                    "name": "Kırık Cam Parçası",
-                    "description": "Dışarıdan içeriye doğru kırılmış, üzerinde kumaş ipliği takılı.",
-                    "details": "ÖZEL BİLGİ: Camın kenarında koyu kırmızı, kaba dokunmuş bir paltoya ait iplik parçaları kalmış.",
-                    "suspect_hint": "Kırmızı palto giyen şüphelinin kıyafetlerini inceleyin.",
-                    "collected": False
-                }
-            ],
-            "Mahzen": [
-                {
-                    "id": "clue_mah_1",
-                    "name": "Kayıp Şarap Şişesi",
-                    "description": "Koleksiyondaki en değerli şişenin yeri boş, yerde taze ayak izi var.",
-                    "details": "ÖZEL BİLGİ: 1884 rekoltesi şarabın yeri boş. Cinayet aleti olarak başa vurulmuş olma ihtimali çok yüksek.",
-                    "suspect_hint": "Gece yarısı mahzene indiği görülen şüpheliyi sıkıştırın.",
-                    "collected": False
-                }
-            ]
-        }
-    
+def init_session_state():
     if "active_suspect_clue" not in st.session_state:
         st.session_state.active_suspect_clue = None
-
     if "audio_enabled" not in st.session_state:
         st.session_state.audio_enabled = True
 
@@ -316,17 +253,13 @@ def show_clue_investigation(clue, room_name):
 
     with c2:
         if st.button("💼 Çantaya Koy", use_container_width=True):
-            for c in st.session_state.clues_db.get(room_name, []):
-                if c["id"] == clue["id"]:
-                    c["collected"] = True
+            clue_engine.collect_clue(st.session_state.session_id, clue["id"])
             st.toast(f"'{clue.get('name')}' çantaya kaldırıldı!", icon="💼")
             st.rerun()
 
     with c3:
         if st.button("👥 Şüpheliye Sor", use_container_width=True):
-            for c in st.session_state.clues_db.get(room_name, []):
-                if c["id"] == clue["id"]:
-                    c["collected"] = True
+            clue_engine.collect_clue(st.session_state.session_id, clue["id"])
             st.session_state.active_suspect_clue = clue
             st.toast(f"'{clue.get('name')}' sorgu masasına alındı! Şüpheli odasına geçebilirsiniz.", icon="⚖️")
             st.rerun()
@@ -336,10 +269,11 @@ def play_ambient_audio(selected_room: str):
     assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets")
     
     room_sound_files = {
-        "Kış Bahçesi": "rain_ambient.mp3",
-        "Çalışma Odası": "fireplace_ambient.mp3",
-        "Kütüphane": "clock_ambient.mp3",
-        "Mahzen": "cellar_ambient.mp3"
+        "Bahçe":      "rain_ambient.mp3",
+        "Çalışma":    "fireplace_ambient.mp3",
+        "Kütüphane":  "clock_ambient.mp3",
+        "Mutfak":     "cellar_ambient.mp3",
+        "Balo Salonu":"cellar_ambient.mp3",
     }
 
     if st.session_state.audio_enabled:
@@ -385,10 +319,11 @@ def render_sidebar(selected_room: str):
     # Odalara göre ses dosyaları
     assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets")
     room_sound_files = {
-        "Kış Bahçesi": "rain_ambient.mp3",
-        "Çalışma Odası": "fireplace_ambient.mp3",
-        "Kütüphane": "clock_ambient.mp3",
-        "Mahzen": "cellar_ambient.mp3"
+        "Bahçe":      "rain_ambient.mp3",
+        "Çalışma":    "fireplace_ambient.mp3",
+        "Kütüphane":  "clock_ambient.mp3",
+        "Mutfak":     "cellar_ambient.mp3",
+        "Balo Salonu":"cellar_ambient.mp3",
     }
 
     # Sade açma/kapatma anahtarı (Çubuk/oynatıcı yok)
@@ -434,66 +369,58 @@ def render_sidebar(selected_room: str):
 
     st.sidebar.markdown("---")
 
-    # Çantadaki delilleri listeleme
-    collected_clues = []
-    total_clues_count = 0
-    for room, clues in st.session_state.clues_db.items():
-        for clue in clues:
-            total_clues_count += 1
-            if clue.get("collected", False):
-                collected_clues.append((clue, room))
-                
+    # Çantadaki delilleri engine'den getir
+    sid = st.session_state.session_id
+    collected_clues = clue_engine.get_collected_clues(sid)
+    all_rooms = clue_engine.get_rooms()
+    total_clues_count = sum(
+        len(clue_engine.get_room_clues(sid, r["id"])) for r in all_rooms
+    )
     collected_count = len(collected_clues)
-    
+
     st.sidebar.markdown(f"**Toplanan Kanıtlar ({collected_count} / {total_clues_count})**")
     progress = collected_count / total_clues_count if total_clues_count > 0 else 0
     st.sidebar.progress(progress)
-    
+
     if st.session_state.active_suspect_clue:
         st.sidebar.success(f"🎯 **Sorgu Masasında:**\n\n*{st.session_state.active_suspect_clue['name']}*")
 
     st.sidebar.markdown("---")
-    
+
     if not collected_clues:
         st.sidebar.info("💼 Çantanız henüz boş. Olay yerlerini dolaşıp ipuçları toplayın.")
     else:
-        for clue, room in collected_clues:
+        for clue in collected_clues:
             st.sidebar.markdown(f"""
                 <div class="sidebar-item">
-                    <strong>📜 {clue['name']}</strong><br>
-                    <small>📍 {room}</small>
+                    <strong>📜 {clue['name']}</strong>
                 </div>
             """, unsafe_allow_html=True)
 
-def render_room_view(session_id: str):
-    init_mock_database()
+ROOM_ICONS = {
+    "Kütüphane":   "📚",
+    "Mutfak":      "🍳",
+    "Bahçe":       "🌿",
+    "Çalışma":     "🖋️",
+    "Balo Salonu": "🎭",
+}
 
-    room_details = {
-        "Kütüphane": {
-            "icon": "📚",
-            "desc": "Tavandan tabana eski meşe raflar. Şömine külleri henüz ılık, yerde aceleyle yırtılmış bir sayfa var."
-        },
-        "Çalışma Odası": {
-            "icon": "🖋️",
-            "desc": "Kurbanın masası burada. Çekmeceler zorlanmış, antika mürekkep hokkası halıya dökülmüş."
-        },
-        "Kış Bahçesi": {
-            "icon": "🌿",
-            "desc": "Cam tavanlı nemli sera. Geniş yapraklı saksılardan birinde taze kazılmış bir çukur görünüyor."
-        },
-        "Mahzen": {
-            "icon": "🍷",
-            "desc": "Tozlu şişeler, kırık kadehler ve kilitli servis kapısına doğru giden ıslak ayak izleri."
-        }
-    }
+
+def render_room_view(session_id: int):
+    init_session_state()
+
+    # Odaları DB'den al
+    rooms = clue_engine.get_rooms()
+    room_by_name = {r["name"]: r for r in rooms}
 
     # 1. Oda Navigasyonu
     nav_c1, nav_c2 = st.columns([1.1, 2])
     with nav_c1:
+        room_names = [r["name"] for r in rooms]
         selected_room = st.selectbox(
             "İncelenecek Odayı Seçin:",
-            list(room_details.keys()),
-            format_func=lambda r: f"{room_details[r]['icon']} {r}"
+            room_names,
+            format_func=lambda r: f"{ROOM_ICONS.get(r, '🚪')} {r}"
         )
 
     apply_detective_theme(selected_room)
@@ -509,18 +436,16 @@ def render_room_view(session_id: str):
     """, unsafe_allow_html=True)
 
     with nav_c2:
-        info = room_details[selected_room]
+        room_desc = room_by_name[selected_room]["description"]
         st.markdown(f"""
             <div class="room-observation-box">
-                <div><strong>📍 Mekan İntibası:</strong> {info['desc']}</div>
+                <div><strong>📍 Mekan İntibası:</strong> {room_desc}</div>
             </div>
         """, unsafe_allow_html=True)
 
-    # 3. İpuçlarını Getir
-    try:
-        clues = clue_engine.get_room_clues(session_id, selected_room)
-    except Exception:
-        clues = st.session_state.clues_db.get(selected_room, [])
+    # 3. İpuçlarını Getir (room_id ile)
+    room_id = room_by_name[selected_room]["id"]
+    clues = clue_engine.get_room_clues(session_id, room_id)
 
     room_total = len(clues)
     room_collected = sum(1 for c in clues if c.get("collected", False))
